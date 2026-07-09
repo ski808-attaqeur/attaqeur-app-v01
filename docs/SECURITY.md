@@ -1,21 +1,21 @@
-# Security — attaqeur-app-v01
+# Security — Idé
 
 ## Secret Handling
-- `OPENAI_API_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `GITHUB_TOKEN` live in Vercel environment variables only.
-- All AI calls go through Next.js API routes — never exposed to the browser.
-- Supabase anon key is the only key shipped to the client.
+- `OPENAI_API_KEY` stored in Vercel environment variables (server-side only)
+- Never referenced in any client component or exposed via a public API route
+- Supabase `service_role` key used only inside Edge Functions, never in browser
+- Only `anon` public key shipped to the frontend
 
-## Permission Model (current → lock-down)
-- **v1**: permissive RLS — all tables readable and writable by anyone (demo mode).
-- **Lock-down sprint**: replace with `auth.uid() = user_id` owner policies on all tables except `shared_links` SELECT (stays public by design).
-- `shared_links` is intentionally public-read; `is_active = false` revokes access without deleting the row.
+## Permission Model (v1 → Lock-Down)
+- **v1:** Open RLS policies on all tables — demo works without login
+- **Lock-Down sprint:** Replace all `using (true)` policies with `using (auth.uid() = user_id)`; add `NOT NULL` constraint to `user_id`; storage buckets set to authenticated-only
+- Storage bucket `recordings/` — public read disabled; signed URLs generated server-side for playback
 
-## Approved-Tools Rule
-- Agents may only call the named tools listed in `AGENTIC_LAYER.md`.
-- No `run_any`, `eval`, or raw shell execution.
-- Every tool call is logged to `activities` with input hash + output excerpt.
+## Approved Tools Rule
+- Agents call only `fn_transcribe`, `fn_summarise`, `fn_chat_note` — no `exec`, no raw SQL, no `send_any`
+- Each Edge Function accepts a validated `note_id` / `recording_id`; it re-fetches the object itself — no client-supplied raw SQL or storage paths pass through unchecked
 
 ## Audit Principle
-- Every meaningful write (note save, snippet insert, AI suggestion applied/rejected, share link created) writes one `activities` row.
-- Audit rows are append-only; no delete policy on `activities`.
-- AI-generated fields always store `source`, `confidence`, and `review_status` — no AI value is silently trusted.
+- Every write that changes a note or triggers an AI action inserts a row into `audit_logs`
+- Audit rows are append-only; no `update` or `delete` policy exists on `audit_logs`
+- If a task involves payments, bulk data deletion, or auth config changes: stop and get a human.

@@ -1,41 +1,33 @@
-# Agentic Layer — attaqeur-app-v01
+# Agentic Layer — Idé
 
 ## Risk Levels & Actions
 
-### Low — auto-execute, log only
-- Detect note language on paste → write `language` + `language_confidence`
-- Auto-tag suggestion → write `tags_suggested` to `ai_suggestions`
-- Generate 'What changed?' summary → write `ai_suggestions` row with `review_status=unreviewed`
-- Scan for TODO/FIXME → display in sidebar (no DB write)
+### Low — Auto (no approval)
+- `transcribe_audio` — call Whisper, write transcript to recordings row
+- `generate_summary` — call GPT-4o, write to ai_insights (type=summary)
+- `auto_tag_note` — call GPT-4o, write to ai_insights (type=tags)
+- `detect_language` — write language_code to notes row
 
-### Medium — draft → user confirms → execute
-- AI bug detector → flags stored in `ai_suggestions`; user reviews each flag before it's highlighted permanently
-- AI docstring → drafted in panel; user clicks **Apply** or **Dismiss**
-- AI autocomplete → ghost-text; user presses Tab to accept
-- AI refactor suggestion → diff preview; user clicks **Apply** or **Reject**
+### Medium — Light Approval (user confirms)
+- `generate_share_link` — set share_token on note (user taps Share → confirm)
+- `append_recording_to_note` — merge new transcript into existing note body
 
-### High — always requires explicit approval
-- Post note to GitHub Gist (external write) → user clicks **Post**, confirms destination
-- Import from GitHub Gist URL → user confirms URL + target snippet before write
+### High — Always Approval
+- `delete_note` — irreversible; modal confirmation required
+- `delete_folder` — deletes all child notes; explicit "Delete all X notes?" confirmation
 
-### Critical — human-only, no agent
-- Permanent note deletion
-- Disabling a shared link
-- Auth credential changes
+### Critical — Human Only
+- Data export / bulk delete — not in v1
 
-## Named Tools (approved set)
-- `detect_language(body: string) → {language, confidence}`
-- `generate_docstring(code: string, language: string) → string`
-- `explain_code(code: string) → string`
-- `detect_bugs(code: string) → [{line, description, severity}]`
-- `summarise_diff(old: string, new: string) → string`
-- `post_to_gist(title, body, token) → {gist_url}`
-- `fetch_gist(url) → {files}`
+## Named Tools (Edge Functions)
+- `fn_transcribe` — accepts storage_path, returns transcript + confidence
+- `fn_summarise` — accepts note body text, returns summary JSON
+- `fn_chat_note` — accepts note body + user message, returns reply
 
-## Audit Log Fields (activities table)
-`entity_type`, `entity_id`, `action`, `payload` (includes tool name, input hash, output excerpt, review_status at time of action)
+## Audit Log Fields
+`id, actor_id (nullable), action, object_type, object_id, payload jsonb, created_at`
 
 ## v1 vs Later
-**v1**: language detect + TODO scan only (no external API calls).
-**Next**: explain, bug detect, docstring, summary — all via Next.js API routes, logged.
-**Later**: refactor apply, intent inference, voice pipeline, Gist post.
+**v1:** `fn_transcribe` only
+**Next:** `fn_summarise`, `fn_chat_note`
+**Later:** proactive nudge agent, cross-note synthesis

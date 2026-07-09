@@ -1,50 +1,25 @@
-# Test Plan — attaqeur-app-v01
+# Test Plan — Idé
 
-## v1 Success Scenario (manual walkthrough)
+## Success Scenario (manual, end-to-end)
+1. Open `/` — background image visible, "Idé." heading present, live clock ticking, record button visible, folder carousel shows seeded folders. **Pass if:** no login prompt.
+2. Swipe carousel to second folder. **Pass if:** folder name updates in header.
+3. Tap record button — button animates (pulsing glow). **Pass if:** browser asks for mic permission once, then recording begins.
+4. Speak: "The quick brown fox jumps over the lazy dog." Tap stop.
+5. **Pass if:** within 20 seconds a new note appears in the active folder with transcribed text in clean paragraphs.
+6. Tap the new note — editor opens. Edit the body by typing " Additional text.". Tap save. **Pass if:** edit persists on refresh.
+7. Tap the image icon — upload a JPEG. **Pass if:** image displays inline in the note.
+8. Tap Share → confirm. **Pass if:** a `/share/[token]` URL is generated and opens the note read-only in a new tab without login.
+9. Tap Delete on the note → confirm. **Pass if:** note is gone from the list and absent from DB.
 
-### Setup
-- Open app at `/` with no account. Confirm four demo notes appear (Express, Pandas, SQL, Bash).
+## Empty State Tests
+- Delete all folders → carousel shows "No folders yet. Tap + to create one."
+- Open folder with no notes → note list shows "No notes yet. Tap record to start."
 
-### Note editing
-1. Click **Express API boilerplate** → editor opens with JS syntax highlighting.
-2. Paste a Python snippet → confirm language badge auto-changes to `python`.
-3. Edit body → wait 1 s → confirm `updated_at` changes (check Supabase table or network tab).
+## Error State Tests
+- Disconnect network before tapping stop → error toast: "Upload failed. Audio saved locally. Retry when online." (v1: toast only)
+- Whisper returns error → note created with body `[transcription pending]`; amber badge shown
+- Share link with invalid token → `/share/invalid` shows "Note not found."
 
-### Regex tester
-4. Open regex panel → enter `\bapp\.\w+` → confirm function calls highlight in editor.
-5. Clear pattern → confirm highlights disappear.
-
-### Diff view
-6. Navigate to `/diff` → select **Express** as Note A, **Bash script** as Note B → confirm side-by-side diff renders with change markers.
-
-### TODO scanner
-7. Return to Express note → confirm TODO sidebar lists "add auth middleware" at line 5 and "port should come from env" at line 8.
-
-### Snippets
-8. Open `/snippets` → confirm three seed snippets listed.
-9. Search "async" → only **Async fetch** snippet shown.
-10. Open **Python dataclass** → click **Use** → template modal opens → change `ClassName` to `UserProfile` → click **Insert** → text inserted at cursor in active note.
-
-### Tag filter
-11. Click tag `#backend` in sidebar → only Express note shown → click **All** → all notes return.
-
-### Export
-12. Open any note → click **Export Markdown** → `.md` file downloads with correct content.
-13. Click **Export HTML** → `.html` file downloads with styled note.
-
-### Share link
-14. Click **Share** → URL copied → open URL in incognito → read-only Monaco renders, no login prompt.
-
----
-
-## Empty / Error Cases
-| Scenario | Expected |
-|---|---|
-| No notes in DB | Empty state illustration + **Create your first note** CTA |
-| Note body empty on save | Auto-saves; empty body is valid |
-| Regex pattern invalid (e.g. `[`) | Show inline error "Invalid regex" — no crash |
-| Diff with same note selected twice | Show "Select two different notes" warning |
-| Share API fails (DB error) | Toast: "Could not create share link — try again" |
-| Gist URL invalid / 404 | Toast: "Gist not found or not accessible" |
-| AI route called but OPENAI_API_KEY missing | Toast: "AI unavailable — check configuration" |
-| Note opened at expired slug | `is_active=false` → render "This link has been deactivated" page |
+## Confidence / AI Tests
+- Record audio with heavy background noise → if `transcript_confidence < 0.6`, amber "Low confidence" badge appears on note
+- Request summary → `ai_insights` row exists in DB with `review_status = 'unreviewed'`

@@ -1,47 +1,35 @@
-# Intelligence Layer — attaqeur-app-v01
+# Intelligence Layer — Idé
 
 ## Messy Inputs
-- Raw pasted code with no declared language
-- Freeform note bodies mixing prose, code, TODOs
-- Spoken dictation with no punctuation
+- Raw audio blob (any language, background noise, filler words)
+- Unstructured spoken text after transcription
 
-## Auto-Structure Schema
+## Auto-Structure (on transcription complete)
 ```json
 {
   "note_id": "uuid",
-  "detected_language": "python",
-  "language_confidence": 0.91,
-  "language_source": "heuristic",
-  "tags_suggested": ["data", "pandas"],
-  "todos": [{"line": 7, "text": "add auth middleware"}],
-  "ai_suggestions": [
-    {
-      "type": "docstring",
-      "value": """Cleans a CSV DataFrame by dropping duplicates...""",
-      "confidence": 0.87,
-      "review_status": "unreviewed"
-    }
-  ]
+  "raw_transcript": "so yeah I was thinking about the pitch deck um...",
+  "cleaned_body": "I was thinking about the pitch deck...",
+  "detected_language": "en",
+  "word_count": 142,
+  "duration_seconds": 48
 }
 ```
 
-## Events to Track
-- `note.saved` — triggers language re-detect if language=`unreviewed`
-- `note.reopened_after_24h` — triggers `summary` AI suggestion
-- `snippet.inserted` — logs namespace + language
-- `ai_suggestion.accepted` / `.rejected` — feeds confidence calibration
+## Events Tracked
+- `recording.started`, `recording.stopped`, `transcription.completed`, `transcription.failed`
+- `insight.requested`, `insight.delivered`, `chat.message_sent`
 
-## Scoring Rules (rule-based first)
-- **Language detect**: regex heuristics for 10 common languages → score 0.7; OpenAI fallback → score 0.5–0.95
-- **Bug severity**: pattern-matched (e.g. bare `except:`, `eval(`) → score 1.0; AI-flagged → score 0.6–0.9
-- **Tag relevance**: keyword overlap with detected language ecosystem
+## Scoring Rules (rule-based v1)
+- Confidence = Whisper `avg_logprob` mapped 0–1
+- If confidence < 0.6 → `review_status = 'needs_review'`; UI shows amber badge
+- Transcript shown immediately; low-confidence segments italicised
 
 ## What Gets Ranked
-- AI suggestions shown in order of confidence DESC
-- Snippets search ranked by fuzzy match score
-- TODO items ranked by line proximity to cursor
+- Notes sorted by `created_at` desc within folder (v1)
+- Later: relevance ranking by semantic similarity to search query
 
 ## v1 vs Later
-**v1**: language heuristic, TODO regex scan — no AI calls.
-**Next**: OpenAI explain, bug detector, docstring, 'What changed?' summary — all stored with review_status.
-**Later**: refactor apply/reject, intent inference, chat-with-note, voice dictation pipeline.
+**v1:** Whisper transcription only; confidence badge; cleaned paragraph formatting
+**Next:** GPT-4o summary + tags auto-generated on note save
+**Later:** Semantic search across notes; proactive insight push ("You mentioned this 3 times this week")

@@ -1,125 +1,75 @@
-# Tasks — attaqeur-app-v01
+# Tasks — Idé
 
-## Sprint 1 — DB, core note CRUD, demo data
-**Goal**: App renders with real data and a working editor — no login required.
-- [ ] Run migration SQL; verify all tables exist with seed rows
-- [ ] Next.js project scaffold + Tailwind + Monaco Editor installed
-- [ ] `/` page: note list with title, language badge, tags — loads from Supabase
-- [ ] Note detail page `/notes/[id]`: Monaco editor, language selector, tag input
-- [ ] Create note (modal or inline form) → persists to DB
-- [ ] Edit note body → auto-save with debounce → `updated_at` stamped
-- [ ] Delete note → confirm dialog → removed from list
-- [ ] Language auto-detect on paste (heuristic, client-side)
-- [ ] Tag filter sidebar — click tag → filters note list
-- [ ] Empty state (no notes), loading skeleton, error toast
+## Sprint 1 — DB + Core Data (Goal: schema live, seed data visible)
+- [ ] Write and apply migration SQL (folders, notes, recordings, note_images, ai_insights, audit_logs)
+- [ ] Seed 4 demo folders, 6 demo notes, 2 demo recordings
+- [ ] Confirm all tables visible in Supabase dashboard with open RLS policies
+- [ ] Supabase Storage bucket `recordings/` created
+**DoD:** Supabase table editor shows all tables with seed rows; no migration errors.
 
-**DoD**: Four demo notes visible on load; create/edit/delete all persist; tag filter works.
+## Sprint 2 — Home Screen UI (Goal: app looks alive, no login)
+- [ ] Full-bleed background image (Unsplash URL as CSS background)
+- [ ] "Idé." italic Times New Roman heading
+- [ ] Live clock top-right (client-side, updates every second)
+- [ ] Glassmorphism hero record toggle button (translucent, backdrop-blur, animated pulse when recording)
+- [ ] Folder carousel below button (swipe left/right, glassmorphism cards, auto-titled)
+- [ ] All five states: loading skeleton, empty (no folders), 1 folder, 6+ folders, error toast
+**DoD:** App opens at `/` without login; background image + clock + record button + folders visible; seeded folders appear in carousel.
 
----
+## Sprint 3 — Record → Transcribe → Note (Core Engine) ★ v1 functional
+- [ ] Browser MediaRecorder captures audio on toggle tap
+- [ ] On stop: upload blob to Supabase Storage
+- [ ] Edge Function `fn_transcribe` calls OpenAI Whisper; writes transcript + confidence to `recordings` row
+- [ ] Note auto-created (folder_id = active folder, title = timestamp, body = transcript)
+- [ ] Realtime subscription → new note appears in folder instantly
+- [ ] If Whisper fails: note created with body = "[transcription pending]"; error toast shown
+- [ ] Transcript formatted into clean paragraphs (no wall of text)
+**DoD:** Record 10 seconds of speech → stop → note with transcribed text appears in folder within 20 seconds. Works in Chrome and Safari.
 
-## Sprint 2 — Smart editing tools
-**Goal**: Regex tester, diff view, TODO scanner all functional against real notes.
-- [ ] Inline regex tester panel: input field, live Monaco decorations on matches
-- [ ] Column/block selection toggle (Monaco `columnSelection` option)
-- [ ] Diff page `/diff`: pick Note A + Note B → Monaco DiffEditor side-by-side
-- [ ] TODO/FIXME scanner: parse active note body, list items in sidebar with line numbers
-- [ ] Fuzzy note search (title + first 200 chars of body) — search bar in header
-- [ ] Breadcrumb anchors for markdown headings in long notes
+## Sprint 4 — Note Editor
+- [ ] Tap folder → note list view (glassmorphism panel)
+- [ ] Tap note → full editor: view + edit body text
+- [ ] Add recording to existing note (append transcript to body)
+- [ ] Upload image to note (stored in `note_images`, displayed inline)
+- [ ] Create new note manually (blank body)
+- [ ] Delete note (confirmation modal)
+- [ ] Copy note body to clipboard
+- [ ] 50+ language display (font stack + `lang` attribute)
+- [ ] All five states per view (loading, empty note list, partial, error, ready)
+**DoD:** Every button persists to DB; deleted notes are gone on refresh; images display inline.
 
-**DoD**: Regex highlights update as user types; diff renders two real notes; TODO list clickable to line.
+## Sprint 5 — Folders CRUD + Share
+- [ ] Create folder manually (auto-title generated)
+- [ ] Delete folder (confirm "delete X notes inside?")
+- [ ] Copy note to different folder
+- [ ] Generate shareable link (`share_token` → public `/share/[token]` route, read-only)
+- [ ] Audit log row written for every share-link generation and delete action
+**DoD:** Share link opens note read-only in new tab without login; folder delete removes all child notes in DB.
 
----
+## Sprint 6 — AI Insights + Note Chat
+- [ ] Edge Function `fn_summarise` → auto-summary on note save (low-risk, auto)
+- [ ] Edge Function `fn_chat_note` → "Ask this note" chat panel
+- [ ] ai_insights rows stored with value + source + confidence + review_status
+- [ ] Low-confidence transcript segments shown with amber badge
+- [ ] Insight panel: summary + tags displayed below note body
+**DoD:** Summary appears within 5 seconds of note save; chat reply references note content; all ai_insights rows visible in DB.
 
-## Sprint 3 — Snippets & templates
-**Goal**: Snippet library is browsable, searchable, and insertable.
-- [ ] `/snippets` page: list all snippets, language + namespace badges
-- [ ] Fuzzy search across snippet title + body
-- [ ] Create / edit / delete snippet → persists to DB
-- [ ] Per-language namespace filter
-- [ ] Live template slot modal: parse `{{variable}}` placeholders, fill form, preview result
-- [ ] Insert snippet at cursor position in active note
-- [ ] Import from GitHub Gist URL → fetch files → create snippet rows
+## Sprint 7 — Lock It Down (Auth + Per-User RLS)
+- [ ] Supabase Auth (email/magic link)
+- [ ] Sign-up / sign-in screens (not the homepage)
+- [ ] Replace open RLS policies with `auth.uid() = user_id` on all tables
+- [ ] Add `NOT NULL` to `user_id` columns
+- [ ] Storage bucket set to authenticated-only; signed URLs for audio playback
+- [ ] Migrate demo seed rows to a system user
+**DoD:** User A cannot read User B's notes. Anonymous visitor sees marketing/demo page only.
 
-**DoD**: All three seed snippets listed; user creates a new snippet with a `{{var}}`, fills it, inserts into a note.
-
----
-
-## Sprint 4 — Sharing, export, note metadata ✦ v1 functional milestone
-**Goal**: Full success scenario from PRD is completable end-to-end.
-- [ ] Share note → POST `/api/share` → creates `shared_links` row → copies URL
-- [ ] `/share/[slug]` public page → read-only Monaco, no login needed
-- [ ] Export Markdown → client-side download
-- [ ] Export HTML → server-rendered styled HTML download
-- [ ] Note lock toggle → editor becomes read-only when `is_locked=true`
-- [ ] Expiry timestamp field → Supabase cron / pg_cron sets `is_archived=true` at expiry
-- [ ] Daily scratch note → pg_cron creates one note titled `Scratch — YYYY-MM-DD` at 00:00 UTC
-- [ ] One-click post to GitHub Gist via `/api/gist` (requires GITHUB_TOKEN env var)
-
-**DoD**: PRD success scenario fully walkable; share link works without login; exports download correctly.
-
----
-
-## Sprint 5 — AI assistance layer
-**Goal**: AI suggestions appear inline, stored, and require user acceptance before applying.
-- [ ] `/api/ai/explain` → stream explanation for selected text → display inline
-- [ ] `/api/ai/bugs` → return `[{line, description, severity}]` → gutter markers
-- [ ] `/api/ai/autocomplete` → ghost-text next line, Tab to accept
-- [ ] `/api/ai/docstring` → draft in panel, Apply / Dismiss buttons
-- [ ] `/api/ai/summary` → 'What changed?' on note reopen after 24 h
-- [ ] All AI outputs written to `ai_suggestions` with source/confidence/review_status
-- [ ] Accept / Reject updates `review_status`, stamps `applied_at` / `rejected_at`
-
-**DoD**: Each AI feature produces a stored suggestion; user can accept or reject; no AI key visible in browser.
-
----
-
-## Sprint 6 — Voice & diction
-**Goal**: Hands-free note input works in Chrome/Edge.
-- [ ] Voice-to-text button → Web Speech API → appends transcript to note body
-- [ ] Punctuation inference pass (regex post-process)
-- [ ] Code dictation mode: token map ("open curly" → `{`, "arrow" → `=>`)
-- [ ] Speak comment → `/api/ai/comment-to-code` → inserts code stub below comment
-- [ ] Tone-aware rewrite button → `/api/ai/rewrite` → diff preview before apply
-- [ ] Hands-free nav: speech command parser → `goToLine(n)`, `selectFunction(name)`
-
-**DoD**: User dictates a variable assignment, it appears correctly in editor; hands-free line navigation works.
-
----
-
-## Sprint 7 — Lock it down (auth + per-user RLS)
-**Goal**: Real users can sign up; data is private by default.
-- [ ] Supabase Auth: email/password + GitHub OAuth
-- [ ] Sign-up / login pages + session management
-- [ ] Populate `user_id` on all writes post-auth
-- [ ] Replace all `v1_read` / `v1_write` policies with `auth.uid() = user_id` owner policies
-- [ ] `shared_links` SELECT policy stays open (public by design)
-- [ ] Unauthenticated write attempts → redirect to /login
-- [ ] Existing demo seed rows tagged with a `demo` user_id (remain visible until replaced)
-
-**DoD**: Two separate user accounts see only their own notes; share links still work publicly.
-
----
-
-## Sprint 8 — Wiki links, git attach, collaboration
-**Goal**: Notes can reference each other; inline comments; snippet history.
-- [ ] `[[double bracket]]` parser → auto-link to matching note titles
-- [ ] Git ref field UI: input branch/SHA → badge shown on note card
-- [ ] Inline comment threads: highlight lines, open comment panel, persist threads
-- [ ] Snippet version history: snapshot on every edit, diff view between versions
-- [ ] Embed URL `/embed/[slug]` → minimal iframe-friendly read-only view
-
-**DoD**: Wiki links navigate between notes; snippet diff shows v1 vs v2; embed URL renders in an iframe.
-
----
-
-## Gantt (sprint → feature area)
+## Gantt (Sprint → Deliverable)
 ```
-Sprint 1  |████ DB + note CRUD + demo data
-Sprint 2  |████ Smart editing (regex, diff, TODO)
-Sprint 3  |████ Snippets + templates
-Sprint 4  |████ Share + export + metadata  ← v1 functional ✦
-Sprint 5  |████ AI assistance
-Sprint 6  |████ Voice + diction
-Sprint 7  |████ Auth + RLS lock-down
-Sprint 8  |████ Wiki links + comments + embed
+Sprint 1  |████| DB schema + seed
+Sprint 2  |████| Home screen UI
+Sprint 3  |████| Record→Transcribe→Note  ← v1 functional ★
+Sprint 4  |████| Note editor
+Sprint 5  |████| Folders CRUD + Share
+Sprint 6  |████| AI insights + chat
+Sprint 7  |████| Auth + RLS lock-down
 ```

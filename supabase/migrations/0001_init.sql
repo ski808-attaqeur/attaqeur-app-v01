@@ -1,165 +1,115 @@
+create table if not exists folders (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  name text not null,
+  cover_color text not null default '#7c3aed',
+  created_at timestamptz not null default now()
+);
+alter table folders enable row level security;
+drop policy if exists "folders_v1_read" on folders;
+create policy "folders_v1_read" on folders for select using (true);
+drop policy if exists "folders_v1_write" on folders;
+create policy "folders_v1_write" on folders for all using (true) with check (true);
+
 create table if not exists notes (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
-  title text not null default 'Untitled',
+  folder_id uuid references folders(id) on delete cascade,
+  title text not null,
   body text not null default '',
-  language text not null default 'plaintext',
-  language_source text,
-  language_confidence numeric,
-  language_review_status text default 'unreviewed',
-  tags text[] not null default '{}',
-  is_locked boolean not null default false,
-  is_archived boolean not null default false,
-  expires_at timestamptz,
-  git_ref text,
-  word_count integer,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  language_code text not null default 'en',
+  share_token text unique,
+  created_at timestamptz not null default now()
 );
-
 alter table notes enable row level security;
 drop policy if exists "notes_v1_read" on notes;
 create policy "notes_v1_read" on notes for select using (true);
 drop policy if exists "notes_v1_write" on notes;
 create policy "notes_v1_write" on notes for all using (true) with check (true);
 
-create table if not exists snippets (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid,
-  title text not null,
-  body text not null,
-  language text not null default 'plaintext',
-  namespace text,
-  variables jsonb not null default '[]',
-  source_gist_url text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-alter table snippets enable row level security;
-drop policy if exists "snippets_v1_read" on snippets;
-create policy "snippets_v1_read" on snippets for select using (true);
-drop policy if exists "snippets_v1_write" on snippets;
-create policy "snippets_v1_write" on snippets for all using (true) with check (true);
-
-create table if not exists snippet_versions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid,
-  snippet_id uuid references snippets(id) on delete cascade,
-  body text not null,
-  version_number integer not null,
-  created_at timestamptz not null default now()
-);
-
-alter table snippet_versions enable row level security;
-drop policy if exists "snippet_versions_v1_read" on snippet_versions;
-create policy "snippet_versions_v1_read" on snippet_versions for select using (true);
-drop policy if exists "snippet_versions_v1_write" on snippet_versions;
-create policy "snippet_versions_v1_write" on snippet_versions for all using (true) with check (true);
-
-create table if not exists shared_links (
+create table if not exists recordings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
   note_id uuid references notes(id) on delete cascade,
-  slug text not null unique,
-  is_active boolean not null default true,
+  storage_path text not null,
+  duration_seconds numeric not null default 0,
+  transcript text,
+  transcript_source text,
+  transcript_confidence numeric,
+  transcript_review_status text not null default 'unreviewed',
   created_at timestamptz not null default now()
 );
+alter table recordings enable row level security;
+drop policy if exists "recordings_v1_read" on recordings;
+create policy "recordings_v1_read" on recordings for select using (true);
+drop policy if exists "recordings_v1_write" on recordings;
+create policy "recordings_v1_write" on recordings for all using (true) with check (true);
 
-alter table shared_links enable row level security;
-drop policy if exists "shared_links_v1_read" on shared_links;
-create policy "shared_links_v1_read" on shared_links for select using (true);
-drop policy if exists "shared_links_v1_write" on shared_links;
-create policy "shared_links_v1_write" on shared_links for all using (true) with check (true);
-
-create table if not exists ai_suggestions (
+create table if not exists note_images (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
   note_id uuid references notes(id) on delete cascade,
-  suggestion_type text not null,
+  storage_path text not null,
+  created_at timestamptz not null default now()
+);
+alter table note_images enable row level security;
+drop policy if exists "note_images_v1_read" on note_images;
+create policy "note_images_v1_read" on note_images for select using (true);
+drop policy if exists "note_images_v1_write" on note_images;
+create policy "note_images_v1_write" on note_images for all using (true) with check (true);
+
+create table if not exists ai_insights (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid,
+  note_id uuid references notes(id) on delete cascade,
+  insight_type text not null,
   value text not null,
-  source text not null default 'openai',
-  confidence numeric,
+  source text not null,
+  confidence numeric not null default 1,
   review_status text not null default 'unreviewed',
-  applied_at timestamptz,
-  rejected_at timestamptz,
+  prompt text,
   created_at timestamptz not null default now()
 );
+alter table ai_insights enable row level security;
+drop policy if exists "ai_insights_v1_read" on ai_insights;
+create policy "ai_insights_v1_read" on ai_insights for select using (true);
+drop policy if exists "ai_insights_v1_write" on ai_insights;
+create policy "ai_insights_v1_write" on ai_insights for all using (true) with check (true);
 
-alter table ai_suggestions enable row level security;
-drop policy if exists "ai_suggestions_v1_read" on ai_suggestions;
-create policy "ai_suggestions_v1_read" on ai_suggestions for select using (true);
-drop policy if exists "ai_suggestions_v1_write" on ai_suggestions;
-create policy "ai_suggestions_v1_write" on ai_suggestions for all using (true) with check (true);
-
-create table if not exists activities (
+create table if not exists audit_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid,
-  entity_type text not null,
-  entity_id uuid not null,
   action text not null,
+  object_type text not null,
+  object_id uuid,
   payload jsonb,
   created_at timestamptz not null default now()
 );
+alter table audit_logs enable row level security;
+drop policy if exists "audit_logs_v1_read" on audit_logs;
+create policy "audit_logs_v1_read" on audit_logs for select using (true);
+drop policy if exists "audit_logs_v1_write" on audit_logs;
+create policy "audit_logs_v1_write" on audit_logs for all using (true) with check (true);
 
-alter table activities enable row level security;
-drop policy if exists "activities_v1_read" on activities;
-create policy "activities_v1_read" on activities for select using (true);
-drop policy if exists "activities_v1_write" on activities;
-create policy "activities_v1_write" on activities for all using (true) with check (true);
+insert into folders (id, name, cover_color, created_at) values
+  ('a1000000-0000-0000-0000-000000000001', 'Folder · 14 Jul 2025 09:00', '#7c3aed', '2025-07-14 09:00:00+00'),
+  ('a1000000-0000-0000-0000-000000000002', 'Folder · 13 Jul 2025 15:30', '#0ea5e9', '2025-07-13 15:30:00+00'),
+  ('a1000000-0000-0000-0000-000000000003', 'Folder · 12 Jul 2025 11:45', '#10b981', '2025-07-12 11:45:00+00'),
+  ('a1000000-0000-0000-0000-000000000004', 'Folder · 10 Jul 2025 08:20', '#f59e0b', '2025-07-10 08:20:00+00')
+on conflict (id) do nothing;
 
-insert into notes (id, title, body, language, tags) values
-(
-  'a1000000-0000-0000-0000-000000000001',
-  'Express API boilerplate',
-  E'const express = require(''express'');\nconst app = express();\n\napp.use(express.json());\n\n// TODO: add auth middleware\napp.get(''/health'', (req, res) => res.json({ status: ''ok'' }));\n\n// FIXME: port should come from env\napp.listen(3000, () => console.log(''Running on 3000''));',
-  'javascript',
-  '{backend, express, node}'
-),
-(
-  'a1000000-0000-0000-0000-000000000002',
-  'Pandas data cleaning snippet',
-  E'import pandas as pd\n\ndf = pd.read_csv(''data.csv'')\n\n# Drop duplicates and nulls\ndf = df.drop_duplicates().dropna()\n\n# Normalise column names\ndf.columns = [c.strip().lower().replace('' '', ''_'') for c in df.columns]\n\nprint(df.dtypes)',
-  'python',
-  '{data, pandas, etl}'
-),
-(
-  'a1000000-0000-0000-0000-000000000003',
-  'Postgres slow query audit',
-  E'-- Find queries taking > 1s\nSELECT query, calls, total_exec_time, mean_exec_time\nFROM pg_stat_statements\nWHERE mean_exec_time > 1000\nORDER BY mean_exec_time DESC\nLIMIT 20;',
-  'sql',
-  '{postgres, performance, dba}'
-),
-(
-  'a1000000-0000-0000-0000-000000000004',
-  'Docker cleanup script',
-  E'#!/bin/bash\n# Remove stopped containers\ndocker container prune -f\n\n# Remove dangling images\ndocker image prune -f\n\n# TODO: add volume cleanup prompt\necho "Done. Disk freed:";\ndf -h / | tail -1',
-  'bash',
-  '{devops, docker, cleanup}'
-);
+insert into notes (id, folder_id, title, body, language_code, created_at) values
+  ('b2000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', '2025-07-14 09:05:00', 'The pitch needs a stronger opening slide. Lead with the problem — not the solution. Investors need to feel the pain before they hear the fix.
 
-insert into snippets (id, title, body, language, namespace, variables) values
-(
-  'b2000000-0000-0000-0000-000000000001',
-  'Async fetch with error handling',
-  E'async function fetchData(url) {\n  try {\n    const res = await fetch({{url}});\n    if (!res.ok) throw new Error(`HTTP ${{res.status}}`);\n    return await res.json();\n  } catch (err) {\n    console.error(''Fetch failed:'', err);\n    throw err;\n  }\n}',
-  'javascript',
-  'js-utils',
-  '[{"name":"url","default":"\"https://api.example.com/data\""}]'
-),
-(
-  'b2000000-0000-0000-0000-000000000002',
-  'Python dataclass template',
-  E'from dataclasses import dataclass, field\nfrom typing import List\n\n@dataclass\nclass {{ClassName}}:\n    name: str\n    items: List[str] = field(default_factory=list)\n\n    def summary(self) -> str:\n        return f"{self.name}: {len(self.items)} items"',
-  'python',
-  'py-patterns',
-  '[{"name":"ClassName","default":"MyModel"}]'
-),
-(
-  'b2000000-0000-0000-0000-000000000003',
-  'SQL upsert pattern',
-  E'INSERT INTO {{table}} ({{pk}}, {{cols}})\nVALUES ({{values}})\nON CONFLICT ({{pk}}) DO UPDATE\n  SET {{update_cols}}, updated_at = now();',
-  'sql',
-  'sql-utils',
-  '[{"name":"table","default":"records"},{"name":"pk","default":"id"},{"name":"cols","default":"name, value"},{"name":"values","default":"gen_random_uuid(), $1, $2"},{"name":"update_cols","default":"name = EXCLUDED.name"}]'
-);
+Consider adding a one-sentence mission statement above the hero image.', 'en', '2025-07-14 09:05:00+00'),
+  ('b2000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001', '2025-07-14 09:22:00', 'Follow up with Marie about the design system tokens. She mentioned Figma variables could map directly to Tailwind config.', 'en', '2025-07-14 09:22:00+00'),
+  ('b2000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000002', '2025-07-13 15:35:00', 'Idée principale : réduire le nombre d''écrans dans l''onboarding. Trois étapes maximum. L''utilisateur doit atteindre la valeur en moins de soixante secondes.', 'fr', '2025-07-13 15:35:00+00'),
+  ('b2000000-0000-0000-0000-000000000004', 'a1000000-0000-0000-0000-000000000002', '2025-07-13 16:10:00', 'Research note: glassmorphism works best on colorful or photographic backgrounds. Frosted glass effect requires backdrop-filter: blur(12px) and a semi-transparent white fill at around 15% opacity.', 'en', '2025-07-13 16:10:00+00'),
+  ('b2000000-0000-0000-0000-000000000005', 'a1000000-0000-0000-0000-000000000003', '2025-07-12 11:50:00', 'Weekly review: shipped the folder carousel. Need to add keyboard accessibility next week. Also — the record button animation feels slightly off on iOS Safari; investigate CSS will-change.', 'en', '2025-07-12 11:50:00+00'),
+  ('b2000000-0000-0000-0000-000000000006', 'a1000000-0000-0000-0000-000000000004', '2025-07-10 08:25:00', 'Brainstorm: app name options — Idé, Voix, Mémo, Echo. Idé wins. It is short, French for idea, and the accent gives it a distinct typographic personality.', 'en', '2025-07-10 08:25:00+00')
+on conflict (id) do nothing;
+
+insert into recordings (id, note_id, storage_path, duration_seconds, transcript, transcript_source, transcript_confidence, transcript_review_status, created_at) values
+  ('c3000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'recordings/demo/pitch-note-01.webm', 38, 'The pitch needs a stronger opening slide. Lead with the problem — not the solution. Investors need to feel the pain before they hear the fix. Consider adding a one-sentence mission statement above the hero image.', 'openai-whisper-1', 0.94, 'unreviewed', '2025-07-14 09:05:10+00'),
+  ('c3000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000006', 'recordings/demo/brainstorm-name-01.webm', 21, 'Brainstorm: app name options — Idé, Voix, Mémo, Echo. Idé wins. It is short, French for idea, and the accent gives it a distinct typographic personality.', 'openai-whisper-1', 0.97, 'unreviewed', '2025-07-10 08:25:08+00')
+on conflict (id) do nothing;
