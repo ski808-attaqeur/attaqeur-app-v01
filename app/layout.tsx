@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
-  title: "vibe-stack-supabase",
-  description: "Next.js + Supabase starter",
+  title: "Idé — speak your mind",
+  description:
+    "Voice-first notes with one-tap transcription, folders, and AI insights. No login required.",
 };
 
 export default function RootLayout({
@@ -13,7 +15,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }
