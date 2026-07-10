@@ -113,3 +113,17 @@ insert into recordings (id, note_id, storage_path, duration_seconds, transcript,
   ('c3000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 'recordings/demo/pitch-note-01.webm', 38, 'The pitch needs a stronger opening slide. Lead with the problem — not the solution. Investors need to feel the pain before they hear the fix. Consider adding a one-sentence mission statement above the hero image.', 'openai-whisper-1', 0.94, 'unreviewed', '2025-07-14 09:05:10+00'),
   ('c3000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000006', 'recordings/demo/brainstorm-name-01.webm', 21, 'Brainstorm: app name options — Idé, Voix, Mémo, Echo. Idé wins. It is short, French for idea, and the accent gives it a distinct typographic personality.', 'openai-whisper-1', 0.97, 'unreviewed', '2025-07-10 08:25:08+00')
 on conflict (id) do nothing;
+
+-- ── Storage buckets (public in v1; locked down in the auth sprint) ───────────
+insert into storage.buckets (id, name, public) values ('recordings', 'recordings', true) on conflict (id) do nothing;
+insert into storage.buckets (id, name, public) values ('note-images', 'note-images', true) on conflict (id) do nothing;
+
+-- Open v1 storage policies: anyone can read/write the two demo buckets.
+drop policy if exists "storage_v1_read" on storage.objects;
+create policy "storage_v1_read" on storage.objects for select using (bucket_id in ('recordings', 'note-images'));
+drop policy if exists "storage_v1_insert" on storage.objects;
+create policy "storage_v1_insert" on storage.objects for insert with check (bucket_id in ('recordings', 'note-images'));
+drop policy if exists "storage_v1_update" on storage.objects;
+create policy "storage_v1_update" on storage.objects for update using (bucket_id in ('recordings', 'note-images'));
+drop policy if exists "storage_v1_delete" on storage.objects;
+create policy "storage_v1_delete" on storage.objects for delete using (bucket_id in ('recordings', 'note-images'));
