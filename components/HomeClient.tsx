@@ -158,11 +158,14 @@ export default function HomeClient() {
   }
 
   async function signOut() {
+    // Clear client-side session state, then hit the server route that can
+    // delete the httpOnly auth cookies and redirect to /login.
     try {
       await getSupabase().auth.signOut();
-    } finally {
-      window.location.assign("/login");
+    } catch {
+      /* ignore — server route is the source of truth */
     }
+    window.location.assign("/auth/signout");
   }
 
   function selectFolder(id: string) {
