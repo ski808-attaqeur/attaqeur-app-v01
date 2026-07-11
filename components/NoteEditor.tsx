@@ -197,7 +197,7 @@ export default function NoteEditor({
       onClick={onClose}
     >
       <div
-        className="glass-strong fade-in flex h-full w-full max-w-2xl flex-col overflow-y-auto p-6"
+        className="glass-strong fade-in flex h-full w-full max-w-2xl flex-col overflow-y-auto p-4 sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
