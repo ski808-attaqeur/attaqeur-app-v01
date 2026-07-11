@@ -11,15 +11,16 @@ export default async function SharePage({
 }) {
   const { token } = await params;
 
-  let note: Note | null = null;
+  let note: Pick<
+    Note,
+    "id" | "title" | "body" | "language_code" | "created_at"
+  > | null = null;
   try {
     const supabase = await createClient();
-    const { data } = await supabase
-      .from("notes")
-      .select("*")
-      .eq("share_token", token)
-      .maybeSingle();
-    note = (data as Note) ?? null;
+    // notes are owner-only under RLS; a security-definer function exposes just
+    // the shared row by token to anonymous visitors.
+    const { data } = await supabase.rpc("get_shared_note", { p_token: token });
+    note = Array.isArray(data) && data.length ? data[0] : null;
   } catch {
     note = null;
   }
