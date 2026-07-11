@@ -157,14 +157,11 @@ export default function HomeClient() {
     }
   }
 
-  async function signOut() {
-    // Clear client-side session state, then hit the server route that can
-    // delete the httpOnly auth cookies and redirect to /login.
-    try {
-      await getSupabase().auth.signOut();
-    } catch {
-      /* ignore — server route is the source of truth */
-    }
+  function signOut() {
+    // Best-effort local clear (fire-and-forget so the redirect is instant),
+    // then the server route deletes the httpOnly auth cookies and lands on
+    // /login — that route is the source of truth.
+    void getSupabase().auth.signOut().catch(() => {});
     window.location.assign("/auth/signout");
   }
 
